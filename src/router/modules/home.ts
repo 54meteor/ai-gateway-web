@@ -20,6 +20,15 @@ export default {
         title: "首页",
         showLink: VITE_HIDE_HOME === "true" ? false : true
       }
+    },
+    {
+      path: "/models",
+      name: "Models",
+      component: () => import("@/views/models/index.vue"),
+      meta: {
+        title: "模型列表",
+        showLink: true
+      }
     }
   ]
 } satisfies RouteConfigsTable;
