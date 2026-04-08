@@ -1,64 +1,106 @@
 <script setup lang="ts">
 import { ref, reactive } from "vue";
-import { ElMessageBox, ElMessage } from "element-plus";
-import ModelDialog from "./ModelDialog.vue";
+import { ElMessage, ElMessageBox } from "element-plus";
+import {
+  getModelList,
+  createModel,
+  updateModel,
+  deleteModel,
+  type Model
+} from "@/api/models";
 
 defineOptions({
   name: "Models"
 });
 
-interface ModelItem {
-  id: number;
-  name: string;
-  provider: string;
-  baseUrl?: string;
-  apiKey?: string;
-  status: "active" | "inactive";
-}
-
-const mockModels: ModelItem[] = [
-  { id: 1, name: "gpt-4o", provider: "OpenAI", status: "active" },
-  { id: 2, name: "gpt-4o-mini", provider: "OpenAI", status: "active" },
-  { id: 3, name: "claude-3-5-sonnet", provider: "Anthropic", status: "active" },
-  { id: 4, name: "gemini-2.0-flash", provider: "Google", status: "inactive" },
-  { id: 5, name: "deepseek-chat", provider: "DeepSeek", status: "active" }
-];
-
 const loading = ref(false);
-const tableData = ref<ModelItem[]>([...mockModels]);
-const dialogRef = ref<InstanceType<typeof ModelDialog>>();
+const tableData = ref<Model[]>([]);
 const pagination = reactive({
   current: 1,
   pageSize: 10,
-  total: mockModels.length
+  total: 0
 });
+
+const dialogVisible = ref(false);
+const dialogTitle = ref("新增模型");
+const isEdit = ref(false);
+const currentId = ref<number>();
+
+const formData = reactive<Model>({
+  name: "",
+  provider: "",
+  status: "active",
+  description: ""
+});
+
+async function fetchModels() {
+  loading.value = true;
+  try {
+    const res = await getModelList({
+      page: pagination.current,
+      pageSize: pagination.pageSize
+    });
+    tableData.value = res.data.list;
+    pagination.total = res.data.total;
+  } catch {
+    ElMessage.error("获取模型列表失败");
+  } finally {
+    loading.value = false;
+  }
+}
 
 function handlePageChange(page: number) {
   pagination.current = page;
+  fetchModels();
 }
 
-function handleAdd() {
-  dialogRef.value?.open();
+function openAddDialog() {
+  dialogTitle.value = "新增模型";
+  isEdit.value = false;
+  Object.assign(formData, { name: "", provider: "", status: "active", description: "" });
+  dialogVisible.value = true;
 }
 
-function handleEdit(row: ModelItem) {
-  dialogRef.value?.open({ ...row });
+function openEditDialog(row: Model) {
+  dialogTitle.value = "编辑模型";
+  isEdit.value = true;
+  currentId.value = row.id;
+  Object.assign(formData, { ...row });
+  dialogVisible.value = true;
 }
 
-async function handleDelete(row: ModelItem) {
+async function handleSubmit() {
   try {
-    await ElMessageBox.confirm(`确定删除模型「${row.name}」吗？`, "删除确认", {
-      confirmButtonText: "删除",
-      cancelButtonText: "取消",
-      type: "warning"
-    });
-    // TODO: 调用 API 删除
-    tableData.value = tableData.value.filter((item) => item.id !== row.id);
-    ElMessage.success("删除成功");
+    if (isEdit.value && currentId.value) {
+      await updateModel(currentId.value, formData);
+      ElMessage.success("更新成功");
+    } else {
+      await createModel(formData);
+      ElMessage.success("创建成功");
+    }
+    dialogVisible.value = false;
+    fetchModels();
   } catch {
-    // 用户取消
+    ElMessage.error(isEdit.value ? "更新失败" : "创建失败");
   }
 }
+
+async function handleDelete(row: Model) {
+  try {
+    await ElMessageBox.confirm(`确定删除模型 "${row.name}" 吗？`, "提示", {
+      type: "warning"
+    });
+    await deleteModel(row.id!);
+    ElMessage.success("删除成功");
+    fetchModels();
+  } catch (err: any) {
+    if (err !== "cancel") {
+      ElMessage.error("删除失败");
+    }
+  }
+}
+
+fetchModels();
 </script>
 
 <template>
@@ -67,12 +109,13 @@ async function handleDelete(row: ModelItem) {
       <template #header>
         <div class="card-header">
           <span>模型列表</span>
-          <el-button type="primary" @click="handleAdd">新增</el-button>
+          <el-button type="primary" @click="openAddDialog">新增模型</el-button>
         </div>
       </template>
       <el-table :data="tableData" v-loading="loading" stripe>
         <el-table-column prop="name" label="名称" />
         <el-table-column prop="provider" label="Provider" />
+        <el-table-column prop="description" label="描述" />
         <el-table-column prop="status" label="状态">
           <template #default="{ row }">
             <el-tag :type="row.status === 'active' ? 'success' : 'info'">
@@ -82,7 +125,7 @@ async function handleDelete(row: ModelItem) {
         </el-table-column>
         <el-table-column label="操作" width="180">
           <template #default="{ row }">
-            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
+            <el-button link type="primary" @click="openEditDialog(row)">编辑</el-button>
             <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -97,7 +140,30 @@ async function handleDelete(row: ModelItem) {
         />
       </div>
     </el-card>
-    <ModelDialog ref="dialogRef" />
+
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px">
+      <el-form :model="formData" label-width="80px">
+        <el-form-item label="名称">
+          <el-input v-model="formData.name" placeholder="请输入模型名称" />
+        </el-form-item>
+        <el-form-item label="Provider">
+          <el-input v-model="formData.provider" placeholder="请输入 Provider" />
+        </el-form-item>
+        <el-form-item label="描述">
+          <el-input v-model="formData.description" type="textarea" placeholder="请输入描述" />
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-radio-group v-model="formData.status">
+            <el-radio value="active">启用</el-radio>
+            <el-radio value="inactive">禁用</el-radio>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleSubmit">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
