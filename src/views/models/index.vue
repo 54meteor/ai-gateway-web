@@ -1,12 +1,22 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, reactive } from "vue";
+import { ElMessageBox, ElMessage } from "element-plus";
+import ModelDialog from "./ModelDialog.vue";
 
 defineOptions({
   name: "Models"
 });
 
-// Mock data for demonstration
-const mockModels = [
+interface ModelItem {
+  id: number;
+  name: string;
+  provider: string;
+  baseUrl?: string;
+  apiKey?: string;
+  status: "active" | "inactive";
+}
+
+const mockModels: ModelItem[] = [
   { id: 1, name: "gpt-4o", provider: "OpenAI", status: "active" },
   { id: 2, name: "gpt-4o-mini", provider: "OpenAI", status: "active" },
   { id: 3, name: "claude-3-5-sonnet", provider: "Anthropic", status: "active" },
@@ -15,15 +25,39 @@ const mockModels = [
 ];
 
 const loading = ref(false);
-const tableData = ref(mockModels);
-const pagination = ref({
+const tableData = ref<ModelItem[]>([...mockModels]);
+const dialogRef = ref<InstanceType<typeof ModelDialog>>();
+const pagination = reactive({
   current: 1,
   pageSize: 10,
   total: mockModels.length
 });
 
 function handlePageChange(page: number) {
-  pagination.value.current = page;
+  pagination.current = page;
+}
+
+function handleAdd() {
+  dialogRef.value?.open();
+}
+
+function handleEdit(row: ModelItem) {
+  dialogRef.value?.open({ ...row });
+}
+
+async function handleDelete(row: ModelItem) {
+  try {
+    await ElMessageBox.confirm(`确定删除模型「${row.name}」吗？`, "删除确认", {
+      confirmButtonText: "删除",
+      cancelButtonText: "取消",
+      type: "warning"
+    });
+    // TODO: 调用 API 删除
+    tableData.value = tableData.value.filter((item) => item.id !== row.id);
+    ElMessage.success("删除成功");
+  } catch {
+    // 用户取消
+  }
 }
 </script>
 
@@ -33,6 +67,7 @@ function handlePageChange(page: number) {
       <template #header>
         <div class="card-header">
           <span>模型列表</span>
+          <el-button type="primary" @click="handleAdd">新增</el-button>
         </div>
       </template>
       <el-table :data="tableData" v-loading="loading" stripe>
@@ -46,9 +81,9 @@ function handlePageChange(page: number) {
           </template>
         </el-table-column>
         <el-table-column label="操作" width="180">
-          <template #default>
-            <el-button link type="primary">编辑</el-button>
-            <el-button link type="danger">删除</el-button>
+          <template #default="{ row }">
+            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
+            <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -62,12 +97,18 @@ function handlePageChange(page: number) {
         />
       </div>
     </el-card>
+    <ModelDialog ref="dialogRef" />
   </div>
 </template>
 
 <style scoped>
 .models-container {
   padding: 20px;
+}
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 .pagination-wrapper {
   margin-top: 20px;
