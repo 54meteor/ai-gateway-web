@@ -4,7 +4,10 @@ export type Model = {
   id?: string;
   name: string;
   provider: string;
+  base_url?: string;
+  api_key?: string;
   status: "active" | "inactive";
+  models?: string[];
   description?: string;
   createdAt?: string;
   updatedAt?: string;

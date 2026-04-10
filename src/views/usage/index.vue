@@ -54,7 +54,26 @@ function formatCost(cost: number) {
 
 function formatDate(date: string) {
   if (!date) return "-";
-  return date.replace("T", " ").replace("Z", "");
+  // 数据库存的是UTC时间，但JS解析时被当作Asia/Shanghai(UTC+8)本地时间
+  // 需要减8小时还原真实UTC，再加8小时得到正确的北京时间显示
+  try {
+    let d: Date;
+    if (date.includes("T")) {
+      d = new Date(date); // ISO格式，JS自动解析为UTC
+    } else {
+      // 普通格式如 "2026-04-10 15:04:31" - JS当作本地时间(UTC+8)解析
+      // 所以实际得到 15:04 Asia/Shanghai = 07:04 UTC
+      // 要得到正确的北京(UTC+8)时间，应该直接加8小时
+      const [y, mo, d_str, h, mi, s] = date.split(/[- :]/).map(Number);
+      // 直接构造为UTC时间
+      d = new Date(Date.UTC(y, mo - 1, d_str, h, mi, s));
+    }
+    // 转为北京时间 (UTC + 8h)
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
+  } catch {
+    return date;
+  }
 }
 
 onMounted(() => {

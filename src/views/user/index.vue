@@ -74,7 +74,14 @@ function formatBalance(balance: number | undefined) {
 
 function formatDate(date: string | undefined) {
   if (!date) return "-";
-  return date.replace("T", " ").replace("Z", "");
+  try {
+    const [y, mo, d, h, mi, s] = date.split(/[-T:Z .]/).filter(Boolean).map(Number);
+    // 构造为UTC时间，然后直接取UTC组件作为北京时间显示（UTC+8）
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${y}-${pad(mo)}-${pad(d)} ${pad(h)}:${pad(mi)}:${pad(s)}`;
+  } catch {
+    return date.replace("T", " ").replace("Z", "");
+  }
 }
 
 onMounted(() => {
