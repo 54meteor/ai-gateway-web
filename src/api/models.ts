@@ -1,7 +1,7 @@
 import { http } from "@/utils/http";
 
 export type Model = {
-  id?: number;
+  id?: string;
   name: string;
   provider: string;
   status: "active" | "inactive";
@@ -34,11 +34,11 @@ export const createModel = (data: object) => {
 };
 
 /** 更新模型 */
-export const updateModel = (id: number, data: object) => {
-  return http.request<ModelResult>("put", `/admin/models/${id}`, { data });
+export const updateModel = (id: string, data: object) => {
+  return http.request<ModelResult>("post", "/admin/models/update", { data: { id, ...data } });
 };
 
 /** 删除模型 */
-export const deleteModel = (id: number) => {
-  return http.request<ModelResult>("delete", `/admin/models/${id}`);
+export const deleteModel = (id: string) => {
+  return http.request<ModelResult>("post", "/admin/models/delete", { data: { id } });
 };
