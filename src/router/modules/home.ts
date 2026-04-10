@@ -29,6 +29,15 @@ export default {
         title: "模型列表",
         showLink: true
       }
+    },
+    {
+      path: "/user",
+      name: "User",
+      component: () => import("@/views/user/index.vue"),
+      meta: {
+        title: "用户管理",
+        showLink: true
+      }
     }
   ]
 } satisfies RouteConfigsTable;
