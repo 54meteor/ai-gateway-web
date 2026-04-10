@@ -12,6 +12,7 @@ export type User = {
   username?: string;
   balance?: number;
   created_at?: string;
+  api_key?: string;  // 脱敏格式的 Key，前5位+*****+后5位
 };
 
 /** 用户列表响应 */
@@ -138,10 +139,10 @@ export const createKey = (userId: string) => {
   });
 };
 
-/** 重置 API Key */
-export const resetKey = (keyId: string) => {
+/** 重置用户的 API Key */
+export const resetKey = (userId: string) => {
   return http.request<CreateKeyResult>("post", "/admin/api/key/reset", {
-    data: { key_id: keyId }
+    data: { user_id: userId }
   });
 };
 
@@ -171,4 +172,42 @@ export const getMyBalance = () => {
 /** 查询自己的用量 */
 export const getMyUsage = (params?: { start?: string; end?: string }) => {
   return http.request<UserUsageResult>("get", "/v1/me/usage", { params });
+};
+
+// ==========================================
+// 用量统计 API
+// ==========================================
+
+/** 用量统计概览 */
+export type UsageStats = {
+  TotalRequests: number;
+  TotalPrompt: number;
+  TotalCompletion: number;
+  TotalTokens: number;
+  TotalCost: number;
+  SuccessRate: number;
+};
+
+/** 用量明细记录 */
+export type UsageRecord = {
+  UserID: string;
+  UserEmail: string;
+  APIKeyID: string;
+  Model: string;
+  PromptTokens: number;
+  CompletionTokens: number;
+  TotalTokens: number;
+  Cost: number;
+  CreatedAt: string;
+};
+
+/** 用量统计响应 */
+export type UsageResult = {
+  Stats: UsageStats;
+  Usage: UsageRecord[];
+};
+
+/** 获取用量统计数据 */
+export const getUsageStats = (params?: { start?: string; end?: string; user?: string }) => {
+  return http.request<UsageResult>("get", "/admin/usage", { params });
 };

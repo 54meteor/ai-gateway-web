@@ -38,6 +38,15 @@ export default {
         title: "用户管理",
         showLink: true
       }
+    },
+    {
+      path: "/usage",
+      name: "Usage",
+      component: () => import("@/views/usage/index.vue"),
+      meta: {
+        title: "用量统计",
+        showLink: true
+      }
     }
   ]
 } satisfies RouteConfigsTable;

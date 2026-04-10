@@ -11,7 +11,7 @@ defineOptions({
 const loading = ref(false);
 const tableData = ref<User[]>([]);
 const dialogVisible = ref(false);
-const dialogMode = ref<"create" | "update" | "recharge" | "reset" | "delete">("create");
+const dialogMode = ref<"create" | "update" | "recharge" | "reset" | "delete" | "createKey" | "resetKey">("create");
 const currentUser = ref<User>();
 
 async function fetchUsers() {
@@ -56,6 +56,18 @@ function openDeleteDialog(row: User) {
   dialogVisible.value = true;
 }
 
+function openCreateKeyDialog(row: User) {
+  dialogMode.value = "createKey";
+  currentUser.value = row;
+  dialogVisible.value = true;
+}
+
+function openResetKeyDialog(row: User) {
+  dialogMode.value = "resetKey";
+  currentUser.value = row;
+  dialogVisible.value = true;
+}
+
 function formatBalance(balance: number | undefined) {
   return balance !== undefined ? `¥ ${balance.toFixed(4)}` : "¥ 0.0000";
 }
@@ -96,10 +108,22 @@ onMounted(() => {
             {{ formatDate(row.created_at) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="280" fixed="right">
+        <el-table-column prop="api_key" label="API Key" width="160">
+          <template #default="{ row }">
+            <span v-if="row.api_key" style="font-family: monospace; color: #909399; font-size: 12px;">{{ row.api_key }}</span>
+            <span v-else style="color: #c0c4cc; font-size: 12px;">—</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="340" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="openRechargeDialog(row)">充值</el-button>
             <el-button link type="warning" @click="openResetDialog(row)">重置</el-button>
+            <template v-if="!row.api_key">
+              <el-button link type="success" @click="openCreateKeyDialog(row)">生成Key</el-button>
+            </template>
+            <template v-else>
+              <el-button link type="warning" @click="openResetKeyDialog(row)">重置Key</el-button>
+            </template>
             <el-button link type="primary" @click="openEditDialog(row)">编辑</el-button>
             <el-button link type="danger" @click="openDeleteDialog(row)">删除</el-button>
           </template>
